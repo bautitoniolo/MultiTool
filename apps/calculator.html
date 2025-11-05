@@ -9,17 +9,27 @@
 
     /* === Configuración general === */
     body {
-      /* Imagen + overlay de gradiente como respaldo */
-      background: url('escudo3107.png');
-      background-size: cover;
+      background-image: url('../assets/images/escudo3107.jpg');
+      background-size: 200px; /* 🔹 Tamaño del patrón repetido */
       background-position: center;
-      background-repeat: no-repeat;
+      background-repeat: repeat; /* 🔹 Repetir la imagen en todo el fondo */
       font-family: 'Poppins', sans-serif;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       height: 100vh;
       margin: 0;
+      background-color: #101020;
+    }
+
+    /* === Imagen superior === */
+    .logo {
+      width: 180px;
+      height: auto;
+      margin-bottom: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
     }
 
     /* === Contenedor principal === */
@@ -74,44 +84,26 @@
     }
 
     /* === Botones especiales === */
-    .operator {
-      background: #ff8c00;
-    }
-
-    .operator:hover {
-      background: #ffad42;
-    }
-
-    .equal {
-      background: #00b894;
-      grid-column: span 1;
-    }
-
-    .equal:hover {
-      background: #00d8aa;
-    }
-
-    .zero {
-      grid-column: span 2;
-    }
+    .operator { background: #ff8c00; }
+    .operator:hover { background: #ffad42; }
+    .equal { background: #00b894; grid-column: span 1; }
+    .equal:hover { background: #00d8aa; }
+    .zero { grid-column: span 2; }
 
     /* === Responsive === */
     @media (max-width: 400px) {
-      .calculator {
-        width: 90%;
-      }
-      .display {
-        font-size: 1.8rem;
-      }
-      .btn {
-        font-size: 1rem;
-        padding: 12px;
-      }
+      .calculator { width: 90%; }
+      .display { font-size: 1.8rem; }
+      .btn { font-size: 1rem; padding: 12px; }
+      .logo { width: 130px; }
     }
   </style>
 </head>
 
 <body>
+  <!-- 🔹 Imagen añadida sin texto visible -->
+  <img src="../assets/images/mi_logo.png" alt="" class="logo" onerror="this.style.display='none'">
+
   <div class="calculator">
     <div class="display" id="display">0</div>
 
@@ -120,6 +112,11 @@
       <button class="btn operator" onclick="appendOperator(')')">)</button>
       <button class="btn operator" onclick="appendRoot()">√</button>
       <button class="btn operator" onclick="appendConstant('π')">π</button>
+
+      <button class="btn operator" onclick="appendFunc('sin')">sin</button>
+      <button class="btn operator" onclick="appendFunc('cos')">cos</button>
+      <button class="btn operator" onclick="appendFunc('tan')">tan</button>
+      <button class="btn operator" onclick="appendOperator('^')">^</button>
 
       <button class="btn" onclick="clearDisplay()">C</button>
       <button class="btn" onclick="deleteLast()">⌫</button>
@@ -151,9 +148,7 @@
     const display = document.getElementById('display');
 
     function appendNumber(num) {
-      if (display.textContent === '0' || display.textContent === 'Error') {
-        display.textContent = '';
-      }
+      if (display.textContent === '0' || display.textContent === 'Error') display.textContent = '';
       display.textContent += num;
     }
 
@@ -172,9 +167,7 @@
     function appendConstant(cnst) {
       if (display.textContent === 'Error') display.textContent = '';
       if (display.textContent === '0') display.textContent = '';
-      if (cnst === 'π') {
-        display.textContent += needsMultiply() ? '*π' : 'π';
-      }
+      if (cnst === 'π') display.textContent += needsMultiply() ? '*π' : 'π';
     }
 
     function appendRoot() {
@@ -183,16 +176,20 @@
       display.textContent += needsMultiply() ? '*√(' : '√(';
     }
 
+    function appendFunc(name) {
+      if (display.textContent === 'Error') display.textContent = '';
+      if (display.textContent === '0') display.textContent = '';
+      const token = name + '(';
+      display.textContent += needsMultiply() ? ('*' + token) : token;
+    }
+
     function clearDisplay() {
       display.textContent = '0';
     }
 
     function deleteLast() {
-      if (display.textContent.length <= 1) {
-        display.textContent = '0';
-      } else {
-        display.textContent = display.textContent.slice(0, -1);
-      }
+      if (display.textContent.length <= 1) display.textContent = '0';
+      else display.textContent = display.textContent.slice(0, -1);
     }
 
     function calculate() {
@@ -207,53 +204,32 @@
         .replace(/%/g, '/100')
         .replace(/π/g, 'Math.PI')
         .replace(/√\(/g, 'Math.sqrt(')
+        .replace(/sin\(/g, 'Math.sin(')
+        .replace(/cos\(/g, 'Math.cos(')
+        .replace(/tan\(/g, 'Math.tan(')
         .replace(/\^/g, '**');
 
       try {
         let result = eval(expr);
-        display.textContent = (typeof result === 'number' && isFinite(result))
-          ? result
-          : 'Error';
+        display.textContent = (typeof result === 'number' && isFinite(result)) ? result : 'Error';
       } catch {
         display.textContent = 'Error';
       }
     }
 
-    /* 🎹 Capturar teclas del teclado */
     document.addEventListener("keydown", (event) => {
       const key = event.key;
-
-      // Números
       if (!isNaN(key)) appendNumber(key);
-
-      // Operadores
-      if (["+", "-", "*", "/"].includes(key)) appendOperator(key);
-
-      // Punto
+      if (["+", "-", "*", "/", "^"].includes(key)) appendOperator(key);
       if (key === ".") appendNumber(".");
-
-      // Paréntesis
       if (key === "(" || key === ")") appendOperator(key);
-
-      // Enter o igual
-      if (key === "Enter" || key === "=") {
-        event.preventDefault();
-        calculate();
-      }
-
-      // Backspace
+      if (key === "Enter" || key === "=") { event.preventDefault(); calculate(); }
       if (key === "Backspace") deleteLast();
-
-      // Escape
       if (key === "Escape") clearDisplay();
     });
   </script>
 </body>
 </html>
-
-
-
-
 
 
 
