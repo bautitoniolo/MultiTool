@@ -357,21 +357,21 @@
     <button class="back-btn" onclick="goBack()">
       <span>←</span> Volver
     </button>
-    <iframe src="calculator.html"></iframe>
+    <iframe data-src="calculator.html" loading="lazy"></iframe>
   </div>
 
   <div id="proyecto2" class="project-detail">
     <button class="back-btn" onclick="goBack()">
       <span>←</span> Volver
     </button>
-    <iframe src="timer.html"></iframe>
+    <iframe data-src="timer.html" loading="lazy"></iframe>
   </div>
 
   <div id="proyecto3" class="project-detail">
     <button class="back-btn" onclick="goBack()">
       <span>←</span> Volver
     </button>
-    <iframe src="unit-converter.html"></iframe>
+    <iframe data-src="unit-converter.html" loading="lazy"></iframe>
   </div>
 
   <script>
@@ -396,6 +396,11 @@
         projectsList.style.display = 'none';
         
         const project = document.getElementById(id);
+        // Cargar iframe solo al abrir por primera vez
+        const iframe = project.querySelector('iframe');
+        if (iframe && !iframe.src) {
+          iframe.src = iframe.dataset.src || '';
+        }
         project.style.display = 'block';
         setTimeout(() => project.classList.add('active'), 50);
       }, 400);
