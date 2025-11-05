@@ -10,80 +10,112 @@
     body {
       font-family: "Poppins", sans-serif;
       background-image: url('../assets/images/escudo3107.jpg');
+      background-size: cover;
+      background-position: center;
       height: 100vh;
       margin: 0;
       display: flex;
       justify-content: center;
       align-items: center;
+      position: relative;
+    }
+
+    /* Overlay sutil para mejorar contraste sin ocultar el fondo */
+    body::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, rgba(0,0,0,0.25), rgba(0,0,0,0.45));
+      pointer-events: none;
     }
 
     .converter-container {
-      background: #3b0202;
-      border-radius: 16px;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-      padding: 30px 40px;
-      width: 360px;
-      text-align: center;
-      transition: transform 0.3s ease;
+      position: relative;
+      background: rgba(255, 255, 255, 0.08);
+      -webkit-backdrop-filter: blur(18px);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 20px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      padding: 28px 26px;
+      width: min(440px, calc(100vw - 32px));
+      text-align: left;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
 
-    .converter-container:hover {
-      transform: translateY(-5px);
-    }
+    .converter-container:hover { transform: translateY(-4px); }
 
     h1 {
-      margin-bottom: 20px;
-      color: #e11d0f;
-      font-size: 1.8rem;
+      margin: 0 0 6px;
+      color: #ffffff;
+      font-size: 1.6rem;
+      letter-spacing: 0.2px;
     }
 
+    .subtitle {
+      margin: 0 0 18px;
+      color: #e6e6e6;
+      font-size: 0.95rem;
+      opacity: 0.9;
+    }
+
+    .form-group { margin: 10px 0 14px; }
+    label { display: block; color: #f7f7f7; font-size: 0.92rem; margin-bottom: 6px; }
     select,
     input {
       width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border: 2px solid #ddd;
-      border-radius: 8px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.08);
+      color: #ffffff;
+      border-radius: 12px;
       font-size: 1rem;
       outline: none;
-      transition: border-color 0.2s ease;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     }
 
+    input::placeholder { color: rgba(255,255,255,0.7); }
     input:focus,
     select:focus {
-      border-color: #f4f026;
+      border-color: #8ad6ff;
+      box-shadow: 0 0 0 3px rgba(138, 214, 255, 0.25);
+      background: rgba(255,255,255,0.12);
     }
 
     button {
       width: 100%;
-      padding: 12px;
-      margin-top: 10px;
-      background-color: #748aeb;
+      padding: 12px 14px;
+      margin-top: 6px;
+      background: linear-gradient(135deg, #5aa9ff, #8ad6ff);
       border: none;
-      border-radius: 8px;
-      color: #fff;
-      font-size: 1rem;
-      font-weight: bold;
+      border-radius: 12px;
+      color: #0b1220;
+      font-size: 1.05rem;
+      font-weight: 700;
       cursor: pointer;
-      transition: background-color 0.3s ease;
+      transition: transform 0.15s ease, filter 0.2s ease;
     }
 
-    button:hover {
-      background-color: #80a5f6;
-    }
+    button:hover { filter: brightness(1.03); transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
 
     .result {
-      margin-top: 20px;
-      font-size: 1.2rem;
-      color: #ebe710;
+      margin-top: 16px;
+      font-size: 1.1rem;
+      color: #ffffff;
       font-weight: 600;
-      min-height: 24px;
+      min-height: 28px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px;
+      padding: 10px 12px;
     }
 
     footer {
-      margin-top: 20px;
+      margin-top: 16px;
       font-size: 0.8rem;
-      color: #777;
+      color: rgba(255,255,255,0.6);
+      text-align: center;
     }
   </style>
 </head>
@@ -91,23 +123,37 @@
 
   <div class="converter-container">
     <h1>Conversor de Unidades</h1>
+    <div class="subtitle">Convierte entre longitud, temperatura y peso.</div>
 
-    <input type="number" id="inputValue" placeholder="Ingrese valor" />
+    <div class="form-group">
+      <label for="inputValue">Valor</label>
+      <input type="number" id="inputValue" placeholder="Ingrese valor" />
+    </div>
 
-    <select id="unitType">
-      <option value="longitud">Longitud</option>
-      <option value="temperatura">Temperatura</option>
-      <option value="peso">Peso</option>
-    </select>
+    <div class="form-group">
+      <label for="unitType">Tipo de unidad</label>
+      <select id="unitType">
+        <option value="longitud">Longitud</option>
+        <option value="temperatura">Temperatura</option>
+        <option value="peso">Peso</option>
+      </select>
+    </div>
 
-    <select id="fromUnit"></select>
-    <select id="toUnit"></select>
+    <div class="form-group">
+      <label for="fromUnit">Desde</label>
+      <select id="fromUnit"></select>
+    </div>
+
+    <div class="form-group">
+      <label for="toUnit">Hacia</label>
+      <select id="toUnit"></select>
+    </div>
 
     <button onclick="convert()">Convertir</button>
 
     <div class="result" id="result"></div>
 
-    <footer>Toniolo maricon</footer>
+  
   </div>
 
   <script>
