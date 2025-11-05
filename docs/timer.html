@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Temporizador con Centésimas</title>
+  <title>Temporizador con Horas y Centésimas</title>
   <style>
     body {
       background: linear-gradient(135deg, #ea130f, #0640be);
@@ -19,29 +19,34 @@
     .timer-container {
       background: #1e1e2f;
       color: white;
-      padding: 50px;
-      border-radius: 25px;
+      padding: 40px;
+      border-radius: 24px;
       box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
       text-align: center;
-      width: 600px;
+      width: min(720px, calc(100vw - 40px));
+      position: relative;
+      overflow: hidden;
     }
 
     #display {
-      font-size: 6rem;
-      margin-bottom: 40px;
+      font-size: clamp(3rem, 8vw, 8rem);
+      margin: 24px auto 28px;
       background: #2b2b40;
-      padding: 25px;
-      border-radius: 15px;
+      padding: 29px 35px;
+      border-radius: 50px;
       box-shadow: inset 0 3px 8px rgba(18, 12, 12, 0.3);
       cursor: text;
       outline: none;
       user-select: none;
+      width: max-content;
+      letter-spacing: 2.8px;
     }
 
     .buttons {
-      display: flex;
-      justify-content: space-between;
-      gap: 15px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 18px;
     }
 
     button {
@@ -60,119 +65,219 @@
       background: #1dc7ee;
     }
 
-    button.stop {
-      background: #ff7675;
+    .secondary { background: #3d3d5c; }
+    .secondary:hover { background: #4f4f75; }
+    .danger { background: #ff7675; }
+    .danger:hover { background: #ff9999; }
+
+    .hint {
+      margin-top: 8px;
+      color: #bfbfd9;
+      font-size: 0.95rem;
     }
 
-    button.stop:hover {
-      background: #ff9999;
+    .laps {
+      margin-top: 18px;
+      background: #222237;
+      border-radius: 12px;
+      padding: 10px 12px;
+      text-align: left;
+      max-height: 220px;
+      overflow: auto;
+    }
+
+    .lap-title { margin: 6px 0 10px; font-weight: 600; color: #e6e6ff; }
+    .lap-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .lap-item:last-child { border-bottom: none; }
+
+    .flash { animation: flash 0.25s linear 6; }
+    @keyframes flash {
+      0%, 100% { box-shadow: 0 0 0 rgba(255,255,255,0); }
+      50% { box-shadow: 0 0 0 6px rgba(255,255,255,0.25) inset; }
     }
   </style>
 </head>
 <body>
-  <div class="timer-container">
-    <div id="display" contenteditable="true">00:00.00</div>
+  <div class="timer-container" id="timerContainer">
+    <div id="display" contenteditable="true">00:00:00.00</div>
 
     <div class="buttons">
-      <button onclick="startTimer()">Iniciar</button>
-      <button class="stop" onclick="pauseTimer()">Pausar</button>
-      <button onclick="resetTimer()">Reiniciar</button>
+      <button id="toggleBtn" onclick="toggleTimer()">Iniciar</button>
+      <button class="secondary" onclick="lap()">Lap</button>
+      <button class="danger" onclick="resetTimer()">Reiniciar</button>
+    </div>
+    <div class="hint">Enter/Espacio: Iniciar/Pausar • R: Reiniciar • L: Lap</div>
+
+    <div class="laps" id="laps" hidden>
+      <div class="lap-title">Vueltas</div>
+      <div id="lapsList"></div>
     </div>
   </div>
 
   <script>
-    let totalTime = 0; // en milisegundos
-    let timerId = null;
-    let isPaused = false;
+    let totalTime = 0; // tiempo restante en ms
+    let running = false;
+    let rafId = null;
+    let targetTimestamp = 0; // performance.now() + totalTime
+    let initialTotalForSession = 0; // para laps
+    let lastLapElapsed = 0;
 
     const display = document.getElementById("display");
 
-    // Convierte texto mm:ss.xx a milisegundos
+    // Convierte texto hh:mm:ss.xx a milisegundos
     function parseTime(text) {
-      const [minSec, cent] = text.split(".");
-      const [min, sec] = minSec.split(":").map(Number);
-      return ((min * 60) + (sec || 0)) * 1000 + (parseInt(cent) * 10 || 0);
+      const [main, cent] = text.split(".");
+      const [h, m, s] = main.split(":").map(Number);
+      return (((h * 3600) + (m * 60) + (s || 0)) * 1000) + (parseInt(cent) * 10 || 0);
     }
 
-    // Convierte milisegundos a formato mm:ss.xx
+    // Convierte milisegundos a formato hh:mm:ss.xx
     function formatTime(ms) {
       const totalSeconds = Math.floor(ms / 1000);
-      const min = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
-      const sec = (totalSeconds % 60).toString().padStart(2, "0");
+      const h = Math.floor(totalSeconds / 3600).toString().padStart(2, "0");
+      const m = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, "0");
+      const s = (totalSeconds % 60).toString().padStart(2, "0");
       const cent = Math.floor((ms % 1000) / 10).toString().padStart(2, "0");
-      return `${min}:${sec}.${cent}`;
+      return `${h}:${m}:${s}.${cent}`;
     }
 
-    function updateDisplay() {
-      display.textContent = formatTime(totalTime);
-    }
+    function updateDisplay() { display.textContent = formatTime(totalTime); }
 
-    // === FUNCIONALIDAD PRINCIPAL ===
     function startTimer() {
-      if (timerId) return;
-
-      if (!isPaused) {
+      if (running) return;
+      // Si no venimos de pausa, tomar del display como inicio
+      if (totalTime === 0 || !Number.isFinite(totalTime) || totalTime < 0) {
         totalTime = parseTime(display.textContent.trim());
-        if (isNaN(totalTime) || totalTime <= 0) {
-          alert("Por favor escribe un tiempo válido (ejemplo: 01:30.00).");
-          return;
-        }
       }
-
-      isPaused = false;
+      if (!totalTime || totalTime <= 0) {
+        alert("Por favor escribe un tiempo válido (ejemplo: 01:10:30.00).");
+        return;
+      }
+      if (initialTotalForSession === 0) {
+        initialTotalForSession = totalTime;
+        lastLapElapsed = 0;
+      }
+      running = true;
       display.contentEditable = "false";
-
-      const interval = 10; // cada 10 milisegundos (centésima)
-      timerId = setInterval(() => {
-        if (totalTime > 0) {
-          totalTime -= interval;
-          updateDisplay();
-        } else {
-          clearInterval(timerId);
-          timerId = null;
-          display.contentEditable = "true";
-          alert("¡Tiempo terminado!");
-        }
-      }, interval);
+      document.getElementById('toggleBtn').textContent = 'Pausar';
+      targetTimestamp = performance.now() + totalTime;
+      tick();
     }
 
     function pauseTimer() {
-      if (timerId) {
-        clearInterval(timerId);
-        timerId = null;
-        isPaused = true;
-        display.contentEditable = "true";
-      }
+      if (!running) return;
+      cancelAnimationFrame(rafId);
+      rafId = null;
+      // Recalcular restante al pausar
+      totalTime = Math.max(0, Math.round(targetTimestamp - performance.now()));
+      running = false;
+      display.contentEditable = "true";
+      document.getElementById('toggleBtn').textContent = 'Reanudar';
     }
 
     function resetTimer() {
-      clearInterval(timerId);
-      timerId = null;
-      isPaused = false;
+      cancelAnimationFrame(rafId);
+      rafId = null;
+      running = false;
       totalTime = 0;
-      display.textContent = "00:00.00";
+      initialTotalForSession = 0;
+      lastLapElapsed = 0;
+      display.textContent = "00:00:00.00";
       display.contentEditable = "true";
+      document.getElementById('toggleBtn').textContent = 'Iniciar';
+      clearLaps();
     }
 
-    // === CONTROL DE EDICIÓN ===
+    function toggleTimer() { if (running) pauseTimer(); else startTimer(); }
+
+    function tick() {
+      rafId = requestAnimationFrame(() => {
+        const now = performance.now();
+        totalTime = Math.max(0, Math.round(targetTimestamp - now));
+        updateDisplay();
+        if (totalTime <= 0) { finish(); return; }
+        tick();
+      });
+    }
+
+    function finish() {
+      running = false;
+      cancelAnimationFrame(rafId);
+      rafId = null;
+      totalTime = 0;
+      updateDisplay();
+      display.contentEditable = "true";
+      document.getElementById('toggleBtn').textContent = 'Iniciar';
+      flash();
+      beepSequence();
+    }
+
+    function flash() {
+      const box = document.getElementById('timerContainer');
+      box.classList.remove('flash');
+      void box.offsetWidth; // reflow para reiniciar animación
+      box.classList.add('flash');
+      setTimeout(() => box.classList.remove('flash'), 2000);
+    }
+
+    // Web Audio beep
+    function beep(freq = 880, durationMs = 120) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + durationMs / 1000);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + durationMs / 1000);
+      } catch {}
+    }
+
+    function beepSequence() {
+      beep(660, 120);
+      setTimeout(() => beep(880, 160), 180);
+      setTimeout(() => beep(660, 140), 380);
+    }
+
+    function lap() {
+      if (!running) return;
+      const elapsed = initialTotalForSession - Math.max(0, Math.round(targetTimestamp - performance.now()));
+      const split = elapsed - lastLapElapsed;
+      lastLapElapsed = elapsed;
+      const lapsBox = document.getElementById('laps');
+      const list = document.getElementById('lapsList');
+      lapsBox.hidden = false;
+      const item = document.createElement('div');
+      item.className = 'lap-item';
+      item.innerHTML = `<span>${formatTime(elapsed)}</span><span>+${formatTime(split)}</span>`;
+      list.prepend(item);
+    }
+
+    function clearLaps() {
+      const list = document.getElementById('lapsList');
+      list.innerHTML = '';
+      document.getElementById('laps').hidden = true;
+    }
+
+    // === NUEVA EDICIÓN FIJA ===
     display.addEventListener("input", () => {
-      let text = display.textContent.replace(/[^0-9.]/g, "");
-      if (text.length === 0) {
-        display.textContent = "00:00.00";
-        placeCaretAtEnd(display);
-        return;
-      }
+      let text = display.textContent;
 
-      // Evita formato inválido
-      if (!text.includes(".")) text += "00";
-      text = text.padStart(6, "0");
-
-      // Reestructura mm:ss.xx
-      const main = text.slice(0, 4);
-      const cent = text.slice(4, 6);
-      const min = main.slice(0, 2);
-      const sec = main.slice(2, 4);
-      display.textContent = `${min}:${sec}.${cent}`;
+      // Asegura siempre el formato base
+      const pattern = /^(\d{0,2}):?(\d{0,2})?:?(\d{0,2})?\.?(\d{0,2})?$/;
+      const clean = text.replace(/[^0-9:.]/g, "");
+      const parts = clean.split(/[:.]/);
+      const [h = "00", m = "00", s = "00", c = "00"] = parts.map(p => p.padStart(2, "0").slice(-2));
+      display.textContent = `${h}:${m}:${s}.${c}`;
       placeCaretAtEnd(display);
     });
 
@@ -186,15 +291,13 @@
     }
 
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        startTimer();
-      }
-      if (e.key === " ") {
-        e.preventDefault();
-        pauseTimer();
-      }
+      if ([" ", "Spacebar"].includes(e.key)) e.preventDefault();
+      if (e.key === "Enter" || e.key === " ") toggleTimer();
+      if (e.key.toLowerCase() === 'r') resetTimer();
+      if (e.key.toLowerCase() === 'l') lap();
+      if (e.key === 'Escape') resetTimer();
     });
   </script>
 </body>
 </html>
+
