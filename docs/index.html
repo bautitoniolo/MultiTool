@@ -77,7 +77,8 @@
       text-align: center;
       position: relative;
       z-index: 1;
-      transition: opacity 0.4s ease, transform 0.4s ease;
+      transition: opacity 0.6s cubic-bezier(0.25, 0.1, 0.25, 1), transform 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
+
     }
 
     .projects {
@@ -391,19 +392,18 @@
       projectsList.style.transform = 'translateY(20px)';
       
       setTimeout(() => {
-        title.style.display = 'none';
-        if (subtitle) subtitle.style.display = 'none';
-        projectsList.style.display = 'none';
-        
-        const project = document.getElementById(id);
-        // Cargar iframe solo al abrir por primera vez
-        const iframe = project.querySelector('iframe');
-        if (iframe && !iframe.src) {
-          iframe.src = iframe.dataset.src || '';
-        }
-        project.style.display = 'block';
-        setTimeout(() => project.classList.add('active'), 50);
-      }, 400);
+       const project = document.getElementById(id);
+       const iframe = project.querySelector('iframe');
+       if (iframe && !iframe.src) iframe.src = iframe.dataset.src || '';
+
+       title.style.display = 'none';
+       if (subtitle) subtitle.style.display = 'none';
+       projectsList.style.display = 'none';
+
+       project.style.display = 'block';
+       setTimeout(() => project.classList.add('active'), 100);
+      }, 500);
+
     }
 
     function goBack() {
